@@ -8,6 +8,7 @@ import com.vz.disposal.config.HDFSRetentionType;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.Trash;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -55,6 +56,7 @@ public class HDFSDisposalTest {
         String CONFIG_PATH = "hdfs://host:4443/projects/name/datasetgroup/datsetname/date=%s";
         Path GLOB_PATH = new Path(CONFIG_PATH.replace("%s", "*"));
         FileSystem fs = Mockito.mock(FileSystem.class);
+        Trash trash = Mockito.mock(Trash.class);
         FileStatus fileStatus1 = Mockito.mock(FileStatus.class);
         mockFileStatusGetPath(fileStatus1, INCLUDE_PATH1);
 
@@ -66,7 +68,7 @@ public class HDFSDisposalTest {
 
         mockFileSystemGlobStatus(fs, GLOB_PATH, new FileStatus[] {fileStatus1, fileStatus2, fileStatus3});
 
-        HDFSDisposal runner = new HDFSDisposal(null, false, fs);
+        HDFSDisposal runner = new HDFSDisposal(null, false, fs,trash);
 
         HDFSConfigEntry entry = new HDFSConfigEntry();
         entry.setPath(CONFIG_PATH);
@@ -80,8 +82,10 @@ public class HDFSDisposalTest {
         Assert.assertTrue(dispose.contains(INCLUDE_PATH2));
         Assert.assertEquals(dispose.size(), 2);
 
-        verify(fs, atLeast(2)).delete(any(), eq(false));
-        verify(fs, atMost(2)).delete(any(), eq(false));
+        //verify(fs, atLeast(2)).delete(any(), eq(false));
+        verify(trash,atLeast(2)).moveToTrash(any());
+        //verify(fs, atMost(2)).delete(any(), eq(false));
+        verify(trash,atMost(2)).moveToTrash(any());
 
     }
 
@@ -92,6 +96,7 @@ public class HDFSDisposalTest {
         String CONFIG_PATH = "hdfs://host:4443/projects/name/datasetgroup/datsetname/date=%s";
         Path GLOB_PATH = new Path(CONFIG_PATH.replace("%s", "*"));
         FileSystem fs = Mockito.mock(FileSystem.class);
+        Trash trash = Mockito.mock(Trash.class);
 
         FileStatus fileStatus1 = Mockito.mock(FileStatus.class);
         mockFileStatusGetPath(fileStatus1, NOT_MATCHING_FILE);
@@ -101,7 +106,7 @@ public class HDFSDisposalTest {
 
         mockFileSystemGlobStatus(fs, GLOB_PATH, new FileStatus[] {fileStatus1, fileStatus2});
 
-        HDFSDisposal runner = new HDFSDisposal(null, false, fs);
+        HDFSDisposal runner = new HDFSDisposal(null, false, fs, trash);
 
         HDFSConfigEntry entry = new HDFSConfigEntry();
         entry.setPath(CONFIG_PATH);
@@ -115,8 +120,10 @@ public class HDFSDisposalTest {
         Assert.assertFalse(dispose.contains(NOT_MATCHING_FILE));
         Assert.assertEquals(dispose.size(), 1);
 
-        verify(fs, atLeast(1)).delete(any(), eq(false));
-        verify(fs, atMost(1)).delete(any(), eq(false));
+        //verify(fs, atLeast(1)).delete(any(), eq(false));
+        verify(trash,atLeast(1)).moveToTrash(any());
+        verify(trash,atMost(1)).moveToTrash(any());
+        //verify(fs, atMost(1)).delete(any(), eq(false));
     }
 
     @DataProvider(name = "dryRunTest")
@@ -139,17 +146,20 @@ public class HDFSDisposalTest {
         entry.setRecursive(true);
 
         FileSystem fs = Mockito.mock(FileSystem.class);
+        Trash trash = Mockito.mock(Trash.class);
         Path INCLUDE_PATH1 = new Path("hdfs://host:4443/projects/name/datasetgroup/datsetname/date=2019-04-23");
         FileStatus fileStatus1 = Mockito.mock(FileStatus.class);
         mockFileStatusGetPath(fileStatus1, INCLUDE_PATH1);
         mockFileSystemGlobStatus(fs, new Path(CONFIG_PATH), new FileStatus[] {fileStatus1});
 
-        HDFSDisposal runner = new HDFSDisposal(null, dryRun, fs);
+        HDFSDisposal runner = new HDFSDisposal(null, dryRun, fs, trash);
         List<Path> dispose = runner.dispose(entry);
 
         Assert.assertTrue(dispose.contains(INCLUDE_PATH1));
         Assert.assertEquals(dispose.size(), 1);
-        verify(fs, atLeast(numberOfDeletes)).delete(eq(INCLUDE_PATH1), eq(true));
+        //verify(fs, atLeast(numberOfDeletes)).delete(eq(INCLUDE_PATH1), eq(true));
+        verify(trash,atLeast(numberOfDeletes)).moveToTrash(eq(INCLUDE_PATH1));
         verify(fs, atMost(numberOfDeletes)).delete(any(), eq(true));
+        verify(trash, atMost(numberOfDeletes)).moveToTrash(any());
     }
 }

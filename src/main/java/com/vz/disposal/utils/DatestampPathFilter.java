@@ -20,6 +20,7 @@ public class DatestampPathFilter extends TimePathFilter {
     private final ParsePosition indexOfDatestamp;
     private final SimpleDateFormat pathDateFormat;
 
+
     public DatestampPathFilter(
             ZonedDateTime timeOfRun,
             ChronoUnit granularity,
@@ -30,8 +31,15 @@ public class DatestampPathFilter extends TimePathFilter {
         super(timeOfRun, granularity, retentionDuration);
         this.indexOfDatestamp = new ParsePosition(indexOfDatestamp);
         this.pathDateFormat = pathDateFormat;
+
     }
 
+    /**
+     *
+     * Patched this to strictly validate the date in the path against the pattern supplied
+     * in the config yaml file
+     *
+     */
     @Override
     public boolean accept(FileStatus fileStatus) {
         // Need to save index because the parse method modifies the value.
@@ -49,9 +57,12 @@ public class DatestampPathFilter extends TimePathFilter {
         Date pathDate = null;
 
         try {
+            pathDateFormat.setLenient(false);
             pathDate = pathDateFormat.parse(date);
         } catch (ParseException pe) {
+            LOG.error("Unable to parse date: " + date + " from path " + path + " against pattern " );
             LOG.error(pe);
+            return false;
         }
 
         if (pathDate == null) {

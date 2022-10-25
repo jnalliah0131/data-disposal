@@ -27,4 +27,6 @@ public abstract class ConfigEntry {
         this.dateFormat = new SimpleDateFormat(dateFormat);
         this.dateFormat.setTimeZone(TimeZone.getTimeZone(ZoneId.of("UTC")));
     }
+
+
 }

@@ -16,6 +16,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.Trash;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,20 +26,25 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
+/**
+ * Patched this file to use moveToTrash instead of delete
+ * As delete is destructive operation, it is little safer to move the files first to Trash
+ */
 public class HDFSDisposal extends Disposal<HDFSConfigList, HDFSConfigEntry> {
     private static final Log LOG = LogFactory.getLog(HDFSDisposal.class);
     public static final String TIMESTAMP_LOCATOR = "%s";
 
     private final FileSystem fs;
+    private final Trash trash;
 
     /**
      * This should only be used for unit testing.
      */
-    protected HDFSDisposal(HDFSConfigList config, boolean dryRun, FileSystem mockfs) {
+    protected HDFSDisposal(HDFSConfigList config, boolean dryRun, FileSystem mockfs, Trash mocktrash) {
         super(config, dryRun);
 
         this.fs = mockfs;
+        this.trash = mocktrash;
     }
 
     public HDFSDisposal(String confFile, boolean dryRun) throws IOException {
@@ -46,6 +52,7 @@ public class HDFSDisposal extends Disposal<HDFSConfigList, HDFSConfigEntry> {
         Configuration conf = new Configuration();
         conf.set("hadoop.security.authentication", "kerberos");
         this.fs = FileSystem.get(URI.create(config.getHdfsNamenode()), conf);
+        this.trash = new Trash(fs,conf);
     }
 
     @Override
@@ -99,7 +106,8 @@ public class HDFSDisposal extends Disposal<HDFSConfigList, HDFSConfigEntry> {
             upForDisposal.stream().forEach(
                     dir -> {
                         try {
-                            fs.delete(dir, entry.isRecursive());
+                            /*fs.delete(dir, entry.isRecursive());*/
+                            trash.moveToTrash(dir);
                         } catch (IOException e) {
                             LOG.error("Delete failed on path: " + dir, e);
                         }
